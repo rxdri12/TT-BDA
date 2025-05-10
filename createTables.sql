@@ -11,12 +11,12 @@ CREATE TABLE Usuario (
 -- Tabla Artista
 CREATE TABLE Artista (
     idArtista BIGSERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
+    nombre VARCHAR(100) UNIQUE NOT NULL,
     descripcion TEXT,
     nacionalidad VARCHAR(50) NOT NULL,
     tipo VARCHAR(50) NOT NULL,
-    numeroSeguidores INTEGER NOT NULL,
-    ranking INTEGER NOT NULL
+    numeroSeguidores INTEGER NOT NULL CHECK(numeroSeguidores >= 0),
+    ranking INTEGER NOT NULL CHECK(ranking > 0)
 );
 
 -- Tabla Cancion
