@@ -1,13 +1,17 @@
 import psycopg2
 import sys
 
+import psycopg2.errorcodes
+import psycopg2.extras 
+from datetime import datetime
+
 def connect_db():
     try:
         conn = psycopg2.connect(
             host='localhost',
             dbname='youtubemusic',
-            user='postgres',
-            password='postgres'
+            user='usuario',
+            password='clave'
         )
         conn.autocommit = False
         return conn
@@ -23,23 +27,56 @@ def disconnect_db(conn):
 # Alta: Engadir usuario
 def add_usuario(conn):
     print("Alta nuevo usuario:")
-    nombre = input("Nombree: ")
-    correo = input("Correo electrónico: ")
-    pseudonimo = input("Pseudónimo: ")
-    password = input("Contraseña: ")
-    data_nacemento = input("Fecha de nacimiento (AAAA-MM-DD): ")
+    snombre = input("Nombre: ")
+    scorreo = input("Correo electrónico: ")
+    spseudonimo = input("Pseudónimo: ")
+    spassword = input("Contraseña: ")
+    sdata_nacemento = input("Fecha de nacimiento (AAAA-MM-DD): ")
+
+    nombre = None if snombre == "" else snombre
+    correo = None if scorreo == "" else scorreo
+    pseudonimo = None if spseudonimo == "" else spseudonimo
+    password = None if spassword == "" else spassword
+    if sdata_nacemento == "":
+        data_nacemento = None
+    else:
+        try:
+            data_nacemento =  datetime.strptime(sdata_nacemento, "%Y-%m-%d").date()
+        except ValueError as e:
+            print(f"Error: Formato de fecha inválido. Detalles: {e}")
+            pass
+
 
     sql = '''
     INSERT INTO Usuario (nombre, correo, pseudonimo, password, fechaNacimiento)
     VALUES (%s, %s, %s, %s, %s)
     '''
+
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (nombre, correo, pseudonimo, password, data_nacemento))
             conn.commit()
             print("Usuario nuevo creado.")
     except psycopg2.Error as e:
-        print(f"Error al crear usuario: {e.pgerror}")
+        if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
+            if e.diag.constraint_name == "usuario_correo_key":
+                print(f"El correo {correo} ya esta registrado")
+            else:
+                print(f"El pseudonimo {pseudonimo} ya está en uso")
+        elif e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
+            if e.diag.column_name == "nombre":
+                print("El nombre es obligatorio")
+            elif e.diag.column_name == "correo":
+                print("El correo es obligatorio")
+            elif e.diag.column_name == "pseudonimo":
+                print("El pseudonimo es obligatorio")
+            elif e.diag.column_name == "password":
+                print("La contraseña es obligatoria")
+            else:
+                print("La fecha es obligatoria")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
         conn.rollback()
 
 # Alta: Engadir artista
@@ -49,7 +86,7 @@ def add_artista(conn):
     descripcion = input("Descripción (opcional): ")
     nacionalidade = input("Nacionalidad: ")
     tipo = input("Tipo (solista, grupo...): ")
-    seguidores = input("Número de seguidores: ")
+    seguidores = input("Número de seg   uidores: ")
     ranking = input("Ranking: ")
 
     sql = '''
@@ -243,7 +280,7 @@ def menu(conn):
 6 - Crear canción y guardarla
 7 - Crear artista y canción inicial
 8 - Ver artista por ID
-9 - Ver canciones guardadas por un usuario
+9 - Ver canciones guardadas por un usuariocertificado digital
 q - Saír
 """)
         opcion = input("Opción: ")
