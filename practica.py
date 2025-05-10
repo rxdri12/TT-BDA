@@ -53,6 +53,7 @@ def add_usuario(conn):
     '''
 
     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #usamos este nivel de asilamiento porque no necesitamos verificar datos antes de insertar
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (nombre, correo, pseudonimo, password, data_nacemento))
@@ -82,24 +83,60 @@ def add_usuario(conn):
 # Alta: Engadir artista
 def add_artista(conn):
     print("Alta nuevo artista:")
-    nombre = input("Nombre artista: ")
-    descripcion = input("Descripción (opcional): ")
-    nacionalidade = input("Nacionalidad: ")
-    tipo = input("Tipo (solista, grupo...): ")
-    seguidores = input("Número de seg   uidores: ")
-    ranking = input("Ranking: ")
+    snombre = input("Nombre artista: ")
+    sdescripcion = input("Descripción (opcional): ")
+    snacionalidade = input("Nacionalidad: ")
+    stipo = input("Tipo (solista, grupo...): ")
+    sseguidores = input("Número de seg   uidores: ")
+    sranking = input("Ranking: ")
+
+    nombre = None if snombre == "" else snombre
+    descripcion = None if sdescripcion == "" else sdescripcion
+    nacionalidade = None if snacionalidade == "" else snacionalidade
+    tipo = None if stipo == "" else stipo
+
+    try:
+        seguidores = None if sseguidores == "" else int(sseguidores)
+        ranking = None if sranking == "" else int(sranking)
+    except ValueError as e:
+        print("Error ranking y/o seguidores debe ser un entero.")
+        pass
+
 
     sql = '''
     INSERT INTO Artista (nombre, descripcion, nacionalidad, tipo, numeroSeguidores, ranking)
     VALUES (%s, %s, %s, %s, %s, %s)
     '''
+
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #usamos este nivel de asilamiento porque no necesitamos verificar datos antes de insertar
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, (nombre, descripcion or None, nacionalidade, tipo, seguidores, ranking))
+            print(descripcion)
+            cur.execute(sql, (nombre, descripcion, nacionalidade, tipo, seguidores, ranking))
             conn.commit()
             print("Artista nuevo creado.")
     except psycopg2.Error as e:
-        print(f"Error al crear artista: {e.pgerror}")
+        if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
+            print(f"El artista {nombre} ya existe")
+        elif e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
+            if e.diag.column_name == "nombre":
+                print("El nombre del artista es obligatorio")
+            elif e.diag.column_name == "nacionalidad":
+                print("La nacionalidad es obligatoria")
+            elif e.diag.column_name == "tipo":
+                print("El tipo es obligatorio")
+            elif e.diag.column_name == "numeroSeguirdores":
+                print("El numero de seguidores es obligatorio")
+            else:
+                print("El ranking es obligatorio")
+        elif e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
+            if e.diag.constraint_name == "ranking":
+                print("El ranking no puede ser menor que 1")
+            else:
+                print("Un artista tiene que tener 0 o mas seguidores")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
         conn.rollback()
 
 #Baja: Eliminar usuario por su id
