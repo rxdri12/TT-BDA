@@ -398,6 +398,38 @@ def create_cancion(conn):
             print(f"Erro {e.pgcode}: {e.pgerror}")
         conn.rollback()
 
+def save_cancion(conn):
+    print("Guardar cancion")
+    sidUsuario = input("Introduce el id de usuario: ")
+    sidCancion = input("Introduce el id de cancion a guardar: ")
+
+
+    if not sidUsuario.isdigit() or int(sidUsuario) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idUsuario = int(sidUsuario)
+
+    if not sidCancion.isdigit() or int(sidCancion) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idCancion = int(sidCancion)
+
+    sql = """
+    INSERT INTO Guarda (idUsuario, idCancion) 
+    VALUES (%s, %s)
+    """
+
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque no necesitamos verificar los datos antes de insertar
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (idUsuario, idCancion))
+            conn.commit()
+            print(f"Se inserto la cancion con id {idCancion} en el usuario {idUsuario}")
+    except psycopg2.Error as e:
+        print(f"Erro {e.pgcode}: {e.pgerror}")
+        conn.rollback()
 
 
 # Menú principal
