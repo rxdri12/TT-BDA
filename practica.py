@@ -3,7 +3,7 @@ import sys
 
 import psycopg2.errorcodes
 import psycopg2.extras 
-from datetime import datetime
+from datetime import datetime, date
 
 def connect_db():
     try:
@@ -44,7 +44,7 @@ def add_usuario(conn):
             data_nacemento =  datetime.strptime(sdata_nacemento, "%Y-%m-%d").date()
         except ValueError as e:
             print(f"Error: Formato de fecha inválido. Detalles: {e}")
-            pass
+            return
 
 
     sql = '''
@@ -100,7 +100,7 @@ def add_artista(conn):
         ranking = None if sranking == "" else int(sranking)
     except ValueError as e:
         print("Error ranking y/o seguidores debe ser un entero.")
-        pass
+        return
 
 
     sql = '''
@@ -142,7 +142,16 @@ def add_artista(conn):
 #Baja: Eliminar usuario por su id
 def delete_usuario(conn):
     print("Eliminar usuario:")
-    id_usuario = input("ID usuario: ")
+    sid_usuario = input("ID usuario: ")
+    if sid_usuario == "":
+        print("el id de usuario no puede ser nulo")
+        return
+    else:
+        try:
+            id_usuario = int(sid_usuario)
+        except ValueError as e:
+            print("El codigo debe ser un numero")
+            return
     sql = "DELETE FROM Usuario WHERE idUsuario = %s"
     sql2 = "SELECT nombre, correo FROM Usuario WHERE idUsuario = %s"
     
@@ -315,6 +324,63 @@ def ver_canciones_usuario(conn):
         conn.rollback()
 
 
+def create_cancion(conn):
+    print("Creacion nueva cancion")
+    sidArtista = input("introduce el id del artista: ")
+    stitulo = input("introduce el titulo de la cancion: ")
+    stiempoDuracion = input("Introduce la duracion del cancion en segundos: ")
+    sgenero = input("Introduce el genero: ")
+    scatergoria = input("Introduce la categoria de la cancion: ")
+
+    if not sidArtista.isdigit() or int(sidArtista) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idArtista = int(sidArtista)
+
+    titulo = None if stitulo == "" else stitulo
+    if not stiempoDuracion.isdigit() or int(stiempoDuracion) <= 0:
+        print("El tiempo de duracion debe ser un numero > 0")
+        return
+    tiempoDuracion = int(stiempoDuracion)
+    genero = None if sgenero == "" else sgenero
+    categoria = None if scatergoria == "" else scatergoria
+
+    sql = """
+    INSERT INTO Cancion(idArtista, titulo, tiempoDuracion, fechaPublicacion, genero, categoria) 
+    VALUES(%s,%s,%s,%s,%s,%s)
+    """
+
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque no tenemos problemas de lecturas sucias
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (idArtista, titulo, tiempoDuracion, date.today(), genero, categoria))
+            conn.commit()
+            print(f"Se inserto la cancion {titulo}")
+    except psycopg2.Error as e:
+        print("No se creo la cancion")
+        if e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            print(f"El artista con id {idArtista} no existe")
+        elif e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
+            if e.diag.column_name == "idArtista":
+                print("El id del artista no puede ser nulo")
+            elif e.diag.column_name == "titulo":
+                print("El titulo de una cancion no puede ser nulo")
+            elif e.diag.column_name == "tiempoDuracion":
+                print("La duracion de la cancion no pude ser nula")
+            elif e.diag.column_name == "genero":
+                print("El genero no puede ser nulo")
+            elif e.diag.column_name == "categoria":
+                print("La categoria no puede ser nula")
+        elif e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
+            print("La duracion debe ser mayor que 0")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
+        conn.rollback()
+
+
+
 # Menú principal
 def menu(conn):
     while True:
@@ -329,6 +395,7 @@ def menu(conn):
 7 - Crear artista y canción inicial
 8 - Ver artista por ID
 9 - Ver canciones guardadas por un usuariocertificado digital
+10 - Crear Cancion              
 q - Saír
 """)
         opcion = input("Opción: ")
@@ -350,6 +417,8 @@ q - Saír
             ver_artista_por_id(conn)
         elif opcion == "9":
             ver_canciones_usuario(conn)
+        elif opcion == "10":
+            create_cancion(conn)
         elif opcion == "q":
             break
         else:
