@@ -428,8 +428,92 @@ def save_cancion(conn):
             conn.commit()
             print(f"Se inserto la cancion con id {idCancion} en el usuario {idUsuario}")
     except psycopg2.Error as e:
-        print(f"Erro {e.pgcode}: {e.pgerror}")
-        conn.rollback()
+        if e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            if e.diag.constraint_name == "guarda_idusuario_fkey":
+                print(f"El usuario con id {idUsuario} no existe")
+            else:
+                print(e.diag.constraint_name)
+                print(f"La cancion con id {idCancion} no existe")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
+            conn.rollback()
+
+def follow_artista(conn):
+    print("Seguir a un artista")
+    sidUsuario = input("Introduce el id del usuario: ")
+    sidArtista = input("Introduce el id de artista: ")
+
+    if not sidUsuario.isdigit() or int(sidUsuario) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idUsuario = int(sidUsuario)
+
+    if not sidArtista.isdigit() or int(sidArtista) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idArtista = int(sidArtista)
+
+    sql = """
+        INSERT INTO Sigue (idUsuario, idArtista)
+        VALUES(%s, %s)
+    """
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (idUsuario, idArtista))
+            conn.commit()
+            print(f"El usuario con id {idUsuario} siguio al artista con id {idArtista}")
+    except psycopg2.Error as e:
+        if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
+            print(f"El usario con id {idUsuario} ya sigue al artista con id {idArtista}")
+        elif e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            if e.diag.constraint_name == "guarda_idusuario_fkey":
+                print(f"El usuario con id {idUsuario} no existe")
+            else:
+                print(e.diag.constraint_name)
+                print(f"El artista con id {idArtista} no existe")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
+            conn.rollback()
+
+def unfollow_artista(conn):
+    print("Dejar de a un artista")
+    sidUsuario = input("Introduce el id del usuario: ")
+    sidArtista = input("Introduce el id de artista: ")
+
+    if not sidUsuario.isdigit() or int(sidUsuario) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idUsuario = int(sidUsuario)
+
+    if not sidArtista.isdigit() or int(sidArtista) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idArtista = int(sidArtista)
+
+    sql = """
+        DELETE FROM Sigue
+        WHERE idUsuario = %s AND idArtista = %s
+    """
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (idUsuario, idArtista))
+            conn.commit()
+            if cur.rowcount == 0:
+                print(f"El usuario con id {idUsuario} no seguia al usuario con id {idArtista}")
+            else:
+                print(f"El usuario con id {idUsuario} dejo de seguir al artista con id {idArtista}")
+    except psycopg2.Error as e:
+        if e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            if e.diag.constraint_name == "guarda_idusuario_fkey":
+                print(f"El usuario con id {idUsuario} no existe")
+            else:
+                print(e.diag.constraint_name)
+                print(f"El artista con id {idArtista} no existe")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
+            conn.rollback()
 
 
 # Menú principal
@@ -446,7 +530,9 @@ def menu(conn):
 7 - Crear artista y canción inicial
 8 - Ver artista por ID
 9 - Ver canciones guardadas por un usuario
-10 - Crear Cancion              
+10 - Crear Cancion   
+11 - Guardar cancion     
+12 - Seguir a un artista
 q - Saír
 """)
         opcion = input("Opción: ")
@@ -470,6 +556,10 @@ q - Saír
             ver_canciones_usuario(conn)
         elif opcion == "10":
             create_cancion(conn)
+        elif opcion == "11":
+            save_cancion(conn)
+        elif opcion =="12":
+            follow_artista(conn)
         elif opcion == "q":
             break
         else:
