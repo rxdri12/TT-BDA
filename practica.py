@@ -144,15 +144,26 @@ def delete_usuario(conn):
     print("Eliminar usuario:")
     id_usuario = input("ID usuario: ")
     sql = "DELETE FROM Usuario WHERE idUsuario = %s"
-
+    sql2 = "SELECT nombre, correo FROM Usuario WHERE idUsuario = %s"
+    
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque no necesitamos verficar que el usuario no ha 
+    #sido borrado por una transaccion anterior y elimina de forma segura las filas de otras tablas
+    #dependientes
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, (id_usuario,))
+            cur.execute(sql2, (id_usuario,))
             if cur.rowcount == 0:
-                print("No existe ningún usuario con ese ID.")
+                print(f"No existe ningún usuario con id {id_usuario}.")
             else:
-                conn.commit()
-                print("Usuario eliminado correctamente.")
+                row = cur.fetchone()
+                verificacion = input(f"¿Seguro que quieres eliminar al usuario {row[0]} con id {id_usuario} y correo {row[1]}?(y/n)")
+                if verificacion != "y":
+                    print("Se cancelo la elminacion del usuario")
+                else:
+                   cur.execute(sql, (id_usuario,))
+                   print(f"El usuario {row[0]} ha sido eliminado")
+            conn.commit()
     except psycopg2.Error as e:
         print(f"Error al eliminar usuario: {e.pgerror}")
         conn.rollback()
