@@ -457,6 +457,9 @@ def follow_artista(conn):
         INSERT INTO Sigue (idUsuario, idArtista)
         VALUES(%s, %s)
     """
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque la consulta solo actua sobre una 
+    # fila de la tabla sin depender de multiples lecturas
 
     try:
         with conn.cursor() as cur:
@@ -495,7 +498,9 @@ def unfollow_artista(conn):
         DELETE FROM Sigue
         WHERE idUsuario = %s AND idArtista = %s
     """
-
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque la consulta solo actua sobre una 
+    # fila de la tabla sin depender de multiples lecturas
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (idUsuario, idArtista))
