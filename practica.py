@@ -284,17 +284,36 @@ def crear_artista_con_cancion(conn):
 
 # Consulta 1: Ver datos de un artista por ID (devuelve 1 fila)
 def ver_artista_por_id(conn):
-    print("Consultar artista por ID:")
+    print("Consultar artista por ID")
     id_artista = input("ID del artista: ")
-    sql = "SELECT * FROM Artista WHERE idArtista = %s"
+
+    if (not id_artista.isdigit() and id_artista > 0) :
+        print("El id del artista tiene que ser un numero entero positivo")
+        return
+    else:
+        id_artista = int(id_artista) 
+
+    sql = "SELECT idArtista, nombre, descripcion, nacionalidad, tipo, numeroSeguidores, ranking FROM Artista WHERE idArtista = %s"
+    #Usamos este nivel de aislamiento porque solo queremos leer datos confirmados
+    #y no vamos a escribir solo leer
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (id_artista,))
             artista = cur.fetchone()
             if artista:
-                print(f"ID: {artista[0]}, Nombre: {artista[1]}, Nacionalidad: {artista[3]}, Tipo: {artista[4]}, Seguidores: {artista[5]}, Ranking: {artista[6]}")
+                ###cambiar esta linea esta mal falta descripcion
+                print(f"Id: {artista[0]}")
+                print(f"Nombre: {artista[1]}")
+                print(f"Descripcion: {artista[2]}")
+                print(f"Nacionalida: {artista[3]}")
+                print(f"Tipo: {artista[4]}")
+                print(f"Numero Seguidores: {artista[5]}")
+                print(f"Ranking: {artista[6]}")
             else:
-                print("Artista no encontrado.")
+                print(f"Artista con codigo {id_artista} no existe.")
+            conn.commit()
     except psycopg2.Error as e:
         print(f"Error en la consulta: {e.pgerror}")
         conn.rollback()
@@ -394,7 +413,7 @@ def menu(conn):
 6 - Crear canción y guardarla
 7 - Crear artista y canción inicial
 8 - Ver artista por ID
-9 - Ver canciones guardadas por un usuariocertificado digital
+9 - Ver canciones guardadas por un usuario
 10 - Crear Cancion              
 q - Saír
 """)

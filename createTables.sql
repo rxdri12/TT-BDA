@@ -28,7 +28,6 @@ CREATE TABLE Cancion (
     fechaPublicacion DATE NOT NULL,
     genero VARCHAR(100) NOT NULL,
     categoria VARCHAR(100) NOT NULL,
-    ruta VARCHAR(100) NOT NULL,
     FOREIGN KEY (idArtista) REFERENCES Artista(idArtista)
         ON DELETE CASCADE
         ON UPDATE CASCADE
