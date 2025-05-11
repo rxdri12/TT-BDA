@@ -438,6 +438,42 @@ def save_cancion(conn):
             print(f"Erro {e.pgcode}: {e.pgerror}")
             conn.rollback()
 
+def unsave_cancion(conn):
+    print("Eliminar cancion de guardados")
+    sidUsuario = input("Introduce el id de usuario: ")
+    sidCancion = input("Introduce el id de cancion a eliminar: ")
+
+    if not sidUsuario.isdigit() or int(sidUsuario) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idUsuario = int(sidUsuario)
+
+    if not sidCancion.isdigit() or int(sidCancion) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idCancion = int(sidCancion)
+
+    sql = """
+        DELETE FROM GUARDA 
+        WHERE idUsuario = %s AND idCancion = %s
+    """
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque la consulta solo actua sobre una 
+    # fila de la tabla sin depender de multiples lecturas
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (idUsuario, idCancion))
+            conn.commit()
+            if cur.rowcount == 0:
+                print(f"El usuario con id {idUsuario} no tenía guardada la cancion con id {idCancion}")
+            else:
+                print(f"El usuario con id {idUsuario} elimino de guardados la cancion con id {idCancion}")
+    except psycopg2.Error as e:
+        print(f"Erro {e.pgcode}: {e.pgerror}")
+        conn.rollback()
+
+
 def follow_artista(conn):
     print("Seguir a un artista")
     sidUsuario = input("Introduce el id del usuario: ")
@@ -510,15 +546,8 @@ def unfollow_artista(conn):
             else:
                 print(f"El usuario con id {idUsuario} dejo de seguir al artista con id {idArtista}")
     except psycopg2.Error as e:
-        if e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
-            if e.diag.constraint_name == "guarda_idusuario_fkey":
-                print(f"El usuario con id {idUsuario} no existe")
-            else:
-                print(e.diag.constraint_name)
-                print(f"El artista con id {idArtista} no existe")
-        else:
-            print(f"Erro {e.pgcode}: {e.pgerror}")
-            conn.rollback()
+        print(f"Erro {e.pgcode}: {e.pgerror}")
+        conn.rollback()
 
 
 # Menú principal
@@ -537,7 +566,9 @@ def menu(conn):
 9 - Ver canciones guardadas por un usuario
 10 - Crear Cancion   
 11 - Guardar cancion     
-12 - Seguir a un artista
+12 - Eliminar de guardados la cancion
+13 - Seguir a un artista
+14 - Dejar de seguir a un artista
 q - Saír
 """)
         opcion = input("Opción: ")
@@ -564,7 +595,11 @@ q - Saír
         elif opcion == "11":
             save_cancion(conn)
         elif opcion =="12":
+            unsave_cancion(conn)
+        elif opcion == "13":
             follow_artista(conn)
+        elif opcion == "14":
+            unfollow_artista(conn)
         elif opcion == "q":
             break
         else:
