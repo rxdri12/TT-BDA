@@ -633,6 +633,86 @@ def unfollow_artista(conn):
         print(f"Erro {e.pgcode}: {e.pgerror}")
         conn.rollback()
 
+def create_multiple_songs(conn):
+    print("Crear varias canciones para un mismo artista")
+
+    sidArtista = input("introduce el id del artista: ")
+
+    if not sidArtista.isdigit() or int(sidArtista) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idArtista = int(sidArtista)
+
+    titulos = []
+    duraciones = []
+    generos = []
+    categorias = []
+
+    canciones = 0
+
+
+    while(True):
+
+        canciones = canciones + 1
+
+        stitulo = input("introduce el titulo de la cancion: ")
+        stiempoDuracion = input("Introduce la duracion del cancion en segundos: ")
+        sgenero = input("Introduce el genero: ")
+        scatergoria = input("Introduce la categoria de la cancion: ")
+
+        titulo = None if stitulo == "" else stitulo
+        if not stiempoDuracion.isdigit() or int(stiempoDuracion) <= 0:
+            print("El tiempo de duracion debe ser un numero > 0")
+            return
+        tiempoDuracion = int(stiempoDuracion)
+        genero = None if sgenero == "" else sgenero
+        categoria = None if scatergoria == "" else scatergoria
+
+        titulos.append(titulo)
+        duraciones.append(tiempoDuracion)
+        generos.append(genero)
+        categorias.append(categoria)
+
+        bucle = input("¿Quieres añadir otra canción?")
+
+        if bucle != "y":
+            break
+    
+    sql = """
+        INSERT INTO Cancion(idArtista, titulo, tiempoDuracion, fechaPublicacion, genero, categoria) 
+        VALUES(%s,%s,%s,%s,%s,%s)
+        """
+    
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    
+    try:
+        with conn.cursor() as cur:
+            for i in range(canciones):
+                cur.execute(sql, (idArtista, titulos[i], duraciones[i], date.today() ,generos[i], categorias[i]))
+            conn.commit()
+            print(f"Se insertaron {canciones} nuevas")
+    except psycopg2.Error as e:
+        if e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            print(f"El artista con id {idArtista} no existe")
+        elif e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
+            if e.diag.column_name == "idArtista":
+                print("El id del artista no puede ser nulo")
+            elif e.diag.column_name == "titulo":
+                print("El titulo de una cancion no puede ser nulo")
+            elif e.diag.column_name == "tiempoDuracion":
+                print("La duracion de la cancion no pude ser nula")
+            elif e.diag.column_name == "genero":
+                print("El genero no puede ser nulo")
+            elif e.diag.column_name == "categoria":
+                print("La categoria no puede ser nula")
+        elif e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
+            print("La duracion debe ser mayor que 0")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
+        conn.rollback()
+
+
+
 
 # Menú principal
 def menu(conn):
