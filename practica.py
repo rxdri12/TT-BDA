@@ -87,7 +87,6 @@ def add_artista(conn):
     sdescripcion = input("Descripción (opcional): ")
     snacionalidade = input("Nacionalidad: ")
     stipo = input("Tipo (solista, grupo...): ")
-    sseguidores = input("Número de seg   uidores: ")
     sranking = input("Ranking: ")
 
     nombre = None if snombre == "" else snombre
@@ -96,16 +95,15 @@ def add_artista(conn):
     tipo = None if stipo == "" else stipo
 
     try:
-        seguidores = None if sseguidores == "" else int(sseguidores)
         ranking = None if sranking == "" else int(sranking)
     except ValueError as e:
-        print("Error ranking y/o seguidores debe ser un entero.")
+        print("Error ranking debe ser un entero.")
         return
 
 
     sql = '''
-    INSERT INTO Artista (nombre, descripcion, nacionalidad, tipo, numeroSeguidores, ranking)
-    VALUES (%s, %s, %s, %s, %s, %s)
+    INSERT INTO Artista (nombre, descripcion, nacionalidad, tipo, ranking)
+    VALUES (%s, %s, %s, %s, %s)
     '''
 
     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
@@ -113,7 +111,7 @@ def add_artista(conn):
     try:
         with conn.cursor() as cur:
             print(descripcion)
-            cur.execute(sql, (nombre, descripcion, nacionalidade, tipo, seguidores, ranking))
+            cur.execute(sql, (nombre, descripcion, nacionalidade, tipo, ranking))
             conn.commit()
             print("Artista nuevo creado.")
     except psycopg2.Error as e:
@@ -126,15 +124,10 @@ def add_artista(conn):
                 print("La nacionalidad es obligatoria")
             elif e.diag.column_name == "tipo":
                 print("El tipo es obligatorio")
-            elif e.diag.column_name == "numeroSeguirdores":
-                print("El numero de seguidores es obligatorio")
             else:
                 print("El ranking es obligatorio")
         elif e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
-            if e.diag.constraint_name == "ranking":
-                print("El ranking no puede ser menor que 1")
-            else:
-                print("Un artista tiene que tener 0 o mas seguidores")
+            print("El ranking no puede ser menor que 1")
         else:
             print(f"Erro {e.pgcode}: {e.pgerror}")
         conn.rollback()
@@ -288,7 +281,6 @@ def crear_artista_con_cancion(conn):
     sdescripcion = input("Descripción (opcional): ")
     snacionalidade = input("Nacionalidad: ")
     stipo = input("Tipo (solista, grupo...): ")
-    sseguidores = input("Número de seg   uidores: ")
     sranking = input("Ranking: ")
 
     nombre = None if snombre == "" else snombre
@@ -297,10 +289,9 @@ def crear_artista_con_cancion(conn):
     tipo = None if stipo == "" else stipo
 
     try:
-        seguidores = None if sseguidores == "" else int(sseguidores)
         ranking = None if sranking == "" else int(sranking)
     except ValueError as e:
-        print("Error ranking y/o seguidores debe ser un entero.")
+        print("Error ranking debe ser un entero.")
         return
 
 
@@ -318,8 +309,8 @@ def crear_artista_con_cancion(conn):
     categoria = None if scatergoria == "" else scatergoria
 
     sql_artista = '''
-    INSERT INTO Artista (nombre, descripcion, nacionalidad, tipo, numeroSeguidores, ranking)
-    VALUES (%s, %s, %s, %s, %s, %s)
+    INSERT INTO Artista (nombre, descripcion, nacionalidad, tipo, ranking)
+    VALUES (%s, %s, %s, %s, %s)
     RETURNING idArtista;
     '''
     sql_cancion = '''
@@ -333,7 +324,7 @@ def crear_artista_con_cancion(conn):
 
     try:
         with conn.cursor() as cur:
-            cur.execute(sql_artista, (nombre, descripcion, nacionalidade, tipo, seguidores, ranking))
+            cur.execute(sql_artista, (nombre, descripcion, nacionalidade, tipo, ranking))
             id_artista = cur.fetchone()[0]
             cur.execute(sql_cancion, (id_artista, titulo, tiempoDuracion, datetime.today(), genero, categoria))
             conn.commit()
@@ -361,15 +352,11 @@ def crear_artista_con_cancion(conn):
                 print("La nacionalidad es obligatoria")
             elif e.diag.column_name == "tipo":
                 print("El tipo es obligatorio")
-            elif e.diag.column_name == "numeroSeguirdores":
-                print("El numero de seguidores es obligatorio")
             else:
                 print("El ranking es obligatorio")
         elif e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
             if e.diag.constraint_name == "ranking":
                 print("El ranking no puede ser menor que 1")
-            elif e.diag.constraint_name == "numeroSeguidores":
-                print("Un artista tiene que tener 0 o mas seguidores")
             else:
                 print("La duracion debe ser mayor que 0")
         else:
@@ -387,7 +374,7 @@ def ver_artista_por_id(conn):
     else:
         id_artista = int(id_artista) 
 
-    sql = "SELECT idArtista, nombre, descripcion, nacionalidad, tipo, numeroSeguidores, ranking FROM Artista WHERE idArtista = %s"
+    sql = "SELECT idArtista, nombre, descripcion, nacionalidad, tipo, ranking FROM Artista WHERE idArtista = %s"
     #Usamos este nivel de aislamiento porque solo queremos leer datos confirmados
     #y no vamos a escribir solo leer
     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
@@ -403,8 +390,7 @@ def ver_artista_por_id(conn):
                 print(f"Descripcion: {artista[2]}")
                 print(f"Nacionalida: {artista[3]}")
                 print(f"Tipo: {artista[4]}")
-                print(f"Numero Seguidores: {artista[5]}")
-                print(f"Ranking: {artista[6]}")
+                print(f"Ranking: {artista[5]}")
             else:
                 print(f"Artista con codigo {id_artista} no existe.")
             conn.commit()
