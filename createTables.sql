@@ -13,7 +13,7 @@ CREATE TABLE Artista (
     descripcion TEXT,
     nacionalidad VARCHAR(50) NOT NULL,
     tipo VARCHAR(50) NOT NULL,
-    ranking INTEGER NOT NULL CHECK(ranking > 0)
+    ranking INTEGER UNIQUE NOT NULL CHECK(ranking > 0)
 );
 
 CREATE TABLE Cancion (

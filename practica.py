@@ -116,7 +116,10 @@ def add_artista(conn):
             print("Artista nuevo creado.")
     except psycopg2.Error as e:
         if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
-            print(f"El artista {nombre} ya existe")
+            if e.diag.constraint_name =="artista_ranking_key":
+                print(f"El artista con ranking {ranking} ya existe")
+            else:
+                print(f"El artista {nombre} ya existe")
         elif e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
             if e.diag.column_name == "nombre":
                 print("El nombre del artista es obligatorio")
@@ -205,6 +208,8 @@ def increase_ranking_artista(conn):
     except psycopg2.Error as e:
         if e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
             print("El nuevo ranking tiene que se mayor que 0")
+        if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
+            print("Ya existe un usario en ese puesto del ranking")
         elif e.pgcode == psycopg2.errorcodes.SERIALIZATION_FAILURE:
             print("El ranking ha sido modificado se cancela la modificacion")
             print("Intentalo de nuevo en unos segundos")
@@ -333,7 +338,10 @@ def crear_artista_con_cancion(conn):
     except psycopg2.Error as e:
         print("No se creo la cancion")
         if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
-            print(f"El artista {nombre} ya existe")
+            if e.diag.constraint_name =="artista_ranking_key":
+                print(f"El artista con ranking {ranking} ya existe")
+            else:
+                print(f"El artista {nombre} ya existe")
         elif e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
             print(f"El artista con id {id_artista} no existe")
         elif e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
