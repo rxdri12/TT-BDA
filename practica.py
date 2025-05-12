@@ -465,12 +465,23 @@ def ver_artista_por_id(conn):
 def ver_canciones_usuario(conn):
     print("Consultar canciones guardadas por un usuario:")
     id_usuario = input("ID del usuario: ")
+
+    if (not id_usuario.isdigit() and id_usuario > 0) :
+        print("El id del artista tiene que ser un numero entero positivo")
+        return
+    else:
+        id_usuario = int(id_usuario) 
+
     sql = '''
     SELECT c.idCancion, c.titulo
     FROM Cancion c
     JOIN Guarda g ON c.idCancion = g.idCancion
     WHERE g.idUsuario = %s
     '''
+
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque no tenemos problemas de lecturas inscosistentes
+
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (id_usuario,))
