@@ -1,4 +1,3 @@
--- Tabla Usuario
 CREATE TABLE Usuario (
     idUsuario BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -8,18 +7,15 @@ CREATE TABLE Usuario (
     fechaNacimiento DATE NOT NULL
 );
 
--- Tabla Artista
 CREATE TABLE Artista (
     idArtista BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(100) UNIQUE NOT NULL,
     descripcion TEXT,
     nacionalidad VARCHAR(50) NOT NULL,
     tipo VARCHAR(50) NOT NULL,
-    numeroSeguidores INTEGER NOT NULL CHECK(numeroSeguidores >= 0),
     ranking INTEGER NOT NULL CHECK(ranking > 0)
 );
 
--- Tabla Cancion
 CREATE TABLE Cancion (
     idCancion BIGSERIAL PRIMARY KEY,
     idArtista BIGINT NOT NULL,
@@ -33,7 +29,6 @@ CREATE TABLE Cancion (
         ON UPDATE CASCADE
 );
 
--- Tabla Guarda (Usuario guarda Cancion)
 CREATE TABLE Guarda (
     idUsuario BIGINT NOT NULL,
     idCancion BIGINT NOT NULL,
@@ -46,7 +41,6 @@ CREATE TABLE Guarda (
         ON UPDATE CASCADE
 );
 
--- Tabla Sigue (Usuario sigue a Artista)
 CREATE TABLE Sigue (
     idUsuario BIGINT NOT NULL,
     idArtista BIGINT NOT NULL,
