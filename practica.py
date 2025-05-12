@@ -178,41 +178,125 @@ def delete_usuario(conn):
         conn.rollback()
 
 #Update: Actualizar ranking de artista
-def update_ranking_artista(conn):
-    print("Actualizar ranking de un artista (valor independente):")
-    id_artista = input("ID artista: ")
-    novo_ranking = input("Nuevo valor de ranking: ")
+# def update_ranking_artista(conn):
+#     print("Actualizar ranking de un artista (valor independente):")
+#     sidArtista = input("ID artista: ")
 
-    sql = "UPDATE Artista SET ranking = %s WHERE idArtista = %s"
+#     if not sidArtista.isdigit() or int(sidArtista) <= 0:
+#         print("El código debe ser un entero > 0")
+#         return
+#     idArtista = int(sidArtista)
+
+#     snovo_ranking = input("Nuevo valor de ranking: ")
+
+#     if not snovo_ranking.isdigit() or int(snovo_ranking) < 0:
+#         print ("El nuevo ranking tiene que se mayor que 0")
+#         return
+#     novo_ranking = int(snovo_ranking)
+
+#     sql = "UPDATE Artista SET ranking = %s WHERE idArtista = %s"
+#     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+#     #Usamos este nivel de aislamiento porque solo necesitamos leer el estado confirmado
+#     #no hay riesgo de insconsistencia por multiples lecturas
+#     try:
+#         with conn.cursor() as cur:
+#             cur.execute(sql, (novo_ranking, idArtista))
+#             if cur.rowcount == 0:
+#                 print("No se encontro el artista.")
+#             else:
+#                 conn.commit()
+#                 print("Ranking actualizado correctamente.")
+#     except psycopg2.Error as e:
+#         print(f"Error al actualizar ranking: {e.pgerror}")
+#         conn.rollback()
+
+def increase_ranking_artista(conn):
+    print("Actualizar ranking de un artista (valor independente):")
+    sidArtista = input("ID artista: ")
+
+    if not sidArtista.isdigit() or int(sidArtista) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idArtista = int(sidArtista)
+
+    snovo_ranking = input("Cuantos puestos sube el artista: ")
+
+    try:
+        novo_ranking = int(snovo_ranking)
+    except ValueError:
+        print("El nuevo ranking tiene que ser un entero")
+        return
+
+    sql = "UPDATE Artista SET ranking = ranking + (%s) WHERE idArtista = %s RETURNING nombre, ranking"
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque solo necesitamos leer el estado confirmado
+    #no hay riesgo de insconsistencia por multiples lecturas
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, (novo_ranking, id_artista))
+            cur.execute(sql, (novo_ranking, idArtista))
             if cur.rowcount == 0:
                 print("No se encontro el artista.")
             else:
                 conn.commit()
-                print("Ranking actualizado correctamente.")
+                row = cur.fetchone()
+                print(f"El artista {row[0]}, ahora tiene el ranking {row[1]}")
     except psycopg2.Error as e:
-        print(f"Error al actualizar ranking: {e.pgerror}")
+        if e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
+            print("El nuevo ranking tiene que se mayor que 0")
+        else:
+            print(f"Error al actualizar ranking: {e.pgerror}")
         conn.rollback()
+
+def cambiar_categoria(conn):
+    print("Cambiar categoria de una cancion")
+    sidCancion = input("Introduce el id de la cancion: ")
+    sCategoria = input("Introduce la nueva categoria")
+
+    if not sidCancion.isdigit() or int(sidCancion) <= 0:
+        print("El código debe ser un entero > 0")
+        return
+    idCancion = int(sidCancion)
+
+    categoria = None if sCategoria == "" else sCategoria
+
+    sql = """
+        UPDATE Artista SET categoria = %s WHERE idArtista = %s
+    """
+
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque solo necesitamos leer el estado confirmado
+    #no hay riesgo de insconsistencia por multiples lecturas
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (categoria, idCancion))
+            conn.commit()
+            print(f"Se actualizo la categoria de la cancion con id {idCancion}")
+    except psycopg2.Error as e:
+        if e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
+            print("La categoria no puede ser nula")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
+        conn.rollback()
+
 
 #Update: Aumentar manualmente seguidores de un artista en un 20%
-def aumentar_seguidores_artista(conn):
-    print("Aumentar seguidores de un artista en un 20%:")
-    id_artista = input("ID artista: ")
+# def aumentar_seguidores_artista(conn):
+#     print("Aumentar seguidores de un artista en un 20%:")
+#     id_artista = input("ID artista: ")
 
-    sql = "UPDATE Artista SET numeroSeguidores = numeroSeguidores * 1.2 WHERE idArtista = %s"
-    try:
-        with conn.cursor() as cur:
-            cur.execute(sql, (id_artista,))
-            if cur.rowcount == 0:
-                print("No se encontro el artista.")
-            else:
-                conn.commit()
-                print("Seguidores aumentados correctamente.")
-    except psycopg2.Error as e:
-        print(f"Error al aumentar seguidores: {e.pgerror}")
-        conn.rollback()
+#     sql = "UPDATE Artista SET numeroSeguidores = numeroSeguidores * 1.2 WHERE idArtista = %s"
+#     try:
+#         with conn.cursor() as cur:
+#             cur.execute(sql, (id_artista,))
+#             if cur.rowcount == 0:
+#                 print("No se encontro el artista.")
+#             else:
+#                 conn.commit()
+#                 print("Seguidores aumentados correctamente.")
+#     except psycopg2.Error as e:
+#         print(f"Error al aumentar seguidores: {e.pgerror}")
+#         conn.rollback()
 
 
 #Funcionalidade 1: Crear unha canción e gardala ao mesmo tempo
@@ -558,8 +642,8 @@ def menu(conn):
 1 - Crear usuario
 2 - Crear artista
 3 - Eliminar usuario
-4 - Actualizar ranking de artista (valor independente)
-5 - Aumentar seguidores de artista en un 20% (valor baseado)
+4 - Aumentar ranking de artista (valor baseado)
+5 - Cambiar categoria (valor independiente)
 6 - Crear canción y guardarla
 7 - Crear artista y canción inicial
 8 - Ver artista por ID
@@ -579,9 +663,9 @@ q - Saír
         elif opcion == "3":
             delete_usuario(conn)
         elif opcion == "4":
-            update_ranking_artista(conn)
+            increase_ranking_artista(conn)
         elif opcion == "5":
-            aumentar_seguidores_artista(conn)
+            cambiar_categoria(conn)
         elif opcion == "6":
             crear_y_guardar_cancion(conn)
         elif opcion == "7":
