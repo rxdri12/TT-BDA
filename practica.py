@@ -333,18 +333,38 @@ def crear_y_guardar_cancion(conn):
 # Funcionalidade 2: Crear artista e a súa primeira canción
 def crear_artista_con_cancion(conn):
     print("Crear artista y canción inicial:")
-    nombre = input("Nombre artista: ")
-    descripcion = input("Descripción (opcional): ")
-    nacionalidade = input("Nacionalidad: ")
-    tipo = input("Tipo (solista, grupo...): ")
-    seguidores = input("Número de seguidores: ")
-    ranking = input("Ranking: ")
+    snombre = input("Nombre artista: ")
+    sdescripcion = input("Descripción (opcional): ")
+    snacionalidade = input("Nacionalidad: ")
+    stipo = input("Tipo (solista, grupo...): ")
+    sseguidores = input("Número de seg   uidores: ")
+    sranking = input("Ranking: ")
 
-    titulo = input("Título da canción: ")
-    duracion = input("Duración (en milisegundos): ")
-    fecha_publicacion = input("Fecha de publicación (AAAA-MM-DD): ")
-    genero = input("Género: ")
-    categoria = input("Categoría: ")
+    nombre = None if snombre == "" else snombre
+    descripcion = None if sdescripcion == "" else sdescripcion
+    nacionalidade = None if snacionalidade == "" else snacionalidade
+    tipo = None if stipo == "" else stipo
+
+    try:
+        seguidores = None if sseguidores == "" else int(sseguidores)
+        ranking = None if sranking == "" else int(sranking)
+    except ValueError as e:
+        print("Error ranking y/o seguidores debe ser un entero.")
+        return
+
+
+    stitulo = input("introduce el titulo de la cancion: ")
+    stiempoDuracion = input("Introduce la duracion del cancion en segundos: ")
+    sgenero = input("Introduce el genero: ")
+    scatergoria = input("Introduce la categoria de la cancion: ")
+
+    titulo = None if stitulo == "" else stitulo
+    if not stiempoDuracion.isdigit() or int(stiempoDuracion) <= 0:
+        print("El tiempo de duracion debe ser un numero > 0")
+        return
+    tiempoDuracion = int(stiempoDuracion)
+    genero = None if sgenero == "" else sgenero
+    categoria = None if scatergoria == "" else scatergoria
 
     sql_artista = '''
     INSERT INTO Artista (nombre, descripcion, nacionalidad, tipo, numeroSeguidores, ranking)
@@ -355,15 +375,54 @@ def crear_artista_con_cancion(conn):
     INSERT INTO Cancion (idArtista, titulo, tiempoDuracion, fechaPublicacion, genero, categoria)
     VALUES (%s, %s, %s, %s, %s, %s)
     '''
+
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
+    #Usamos este nivel de aislamiento porque no necesitamos verificar si otra 
+    #transaccion inserta elementos mientras nosostros insertamos
+
     try:
         with conn.cursor() as cur:
-            cur.execute(sql_artista, (nombre, descripcion or None, nacionalidade, tipo, seguidores, ranking))
+            cur.execute(sql_artista, (nombre, descripcion, nacionalidade, tipo, seguidores, ranking))
             id_artista = cur.fetchone()[0]
-            cur.execute(sql_cancion, (id_artista, titulo, duracion, fecha_publicacion, genero, categoria))
+            cur.execute(sql_cancion, (id_artista, titulo, tiempoDuracion, datetime.today(), genero, categoria))
             conn.commit()
             print("Artista e canción creados correctamente.")
     except psycopg2.Error as e:
-        print(f"Erro na transacción: {e.pgerror}")
+        print("No se creo la cancion")
+        if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
+            print(f"El artista {nombre} ya existe")
+        elif e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            print(f"El artista con id {id_artista} no existe")
+        elif e.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION:
+            if e.diag.column_name == "idArtista":
+                print("El id del artista no puede ser nulo")
+            elif e.diag.column_name == "titulo":
+                print("El titulo de una cancion no puede ser nulo")
+            elif e.diag.column_name == "tiempoDuracion":
+                print("La duracion de la cancion no pude ser nula")
+            elif e.diag.column_name == "genero":
+                print("El genero no puede ser nulo")
+            elif e.diag.column_name == "categoria":
+                print("La categoria no puede ser nula")
+            elif e.diag.column_name == "nombre":
+                print("El nombre del artista es obligatorio")
+            elif e.diag.column_name == "nacionalidad":
+                print("La nacionalidad es obligatoria")
+            elif e.diag.column_name == "tipo":
+                print("El tipo es obligatorio")
+            elif e.diag.column_name == "numeroSeguirdores":
+                print("El numero de seguidores es obligatorio")
+            else:
+                print("El ranking es obligatorio")
+        elif e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
+            if e.diag.constraint_name == "ranking":
+                print("El ranking no puede ser menor que 1")
+            elif e.diag.constraint_name == "numeroSeguidores":
+                print("Un artista tiene que tener 0 o mas seguidores")
+            else:
+                print("La duracion debe ser mayor que 0")
+        else:
+            print(f"Erro {e.pgcode}: {e.pgerror}")
         conn.rollback()
 
 # Consulta 1: Ver datos de un artista por ID (devuelve 1 fila)
@@ -684,7 +743,9 @@ def create_multiple_songs(conn):
         """
     
     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
-    
+    #Usamos este nivel de aislamiento porque no necesitamos verificar que otra transanccion inserte
+    #elementos mientras nosostros insertamos
+
     try:
         with conn.cursor() as cur:
             for i in range(canciones):
