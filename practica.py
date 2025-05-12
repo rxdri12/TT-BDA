@@ -159,6 +159,7 @@ def delete_usuario(conn):
                 print(f"No existe ningún usuario con id {id_usuario}.")
             else:
                 row = cur.fetchone()
+                print("Al eleminar un usario se borran sus guardados y sus seguidos")
                 verificacion = input(f"¿Seguro que quieres eliminar al usuario {row[0]} con id {id_usuario} y correo {row[1]}?(y/n)")
                 if verificacion != "y":
                     print("Se cancelo la elminacion del usuario")
@@ -188,7 +189,7 @@ def increase_ranking_artista(conn):
         print("El nuevo ranking tiene que ser un entero")
         return
 
-    sql = "UPDATE Artista SET ranking = ranking + (%s) WHERE idArtista = %s RETURNING nombre, ranking"
+    sql = "UPDATE Artista SET ranking = ranking - (%s) WHERE idArtista = %s RETURNING nombre, ranking"
     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE
     #Usamos este nivel de aislamiento para asegurarnos de que no se ha modificado 
     #El valor del ranking en una trasaccion no confirmada
@@ -214,7 +215,7 @@ def increase_ranking_artista(conn):
 def cambiar_categoria(conn):
     print("Cambiar categoria de una cancion")
     sidCancion = input("Introduce el id de la cancion: ")
-    sCategoria = input("Introduce la nueva categoria")
+    sCategoria = input("Introduce la nueva categoria: ")
 
     if not sidCancion.isdigit() or int(sidCancion) <= 0:
         print("El código debe ser un entero > 0")
@@ -224,7 +225,7 @@ def cambiar_categoria(conn):
     categoria = None if sCategoria == "" else sCategoria
 
     sql = """
-        UPDATE Artista SET categoria = %s WHERE idArtista = %s
+        UPDATE Cancion SET categoria = %s WHERE idArtista = %s
     """
 
     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
@@ -429,6 +430,7 @@ def ver_canciones_usuario(conn):
                 print("Canciones guardadas:")
                 for row in rows:
                     print(f"ID: {row[0]}, Título: {row[1]}")
+            conn.commit()
     except psycopg2.Error as e:
         print(f"Error en la consulta: {e.pgerror}")
         conn.rollback()
@@ -519,7 +521,9 @@ def save_cancion(conn):
             conn.commit()
             print(f"Se inserto la cancion con id {idCancion} en el usuario {idUsuario}")
     except psycopg2.Error as e:
-        if e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+        if e.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
+            print(f"El usuario con id {idUsuario} ya guardo la cancion con id {idCancion}")
+        elif e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
             if e.diag.constraint_name == "guarda_idusuario_fkey":
                 print(f"El usuario con id {idUsuario} no existe")
             else:
@@ -604,7 +608,7 @@ def follow_artista(conn):
                 print(f"El artista con id {idArtista} no existe")
         else:
             print(f"Erro {e.pgcode}: {e.pgerror}")
-            conn.rollback()
+        conn.rollback()
 
 def unfollow_artista(conn):
     print("Dejar de a un artista")
@@ -680,7 +684,7 @@ def create_multiple_songs(conn):
         generos.append(genero)
         categorias.append(categoria)
 
-        bucle = input("¿Quieres añadir otra canción?")
+        bucle = input("¿Quieres añadir otra canción?(y/n)")
 
         if bucle != "y":
             break
@@ -699,7 +703,7 @@ def create_multiple_songs(conn):
             for i in range(canciones):
                 cur.execute(sql, (idArtista, titulos[i], duraciones[i], date.today() ,generos[i], categorias[i]))
             conn.commit()
-            print(f"Se insertaron {canciones} nuevas")
+            print(f"Se insertaron {canciones} canciones nuevas")
     except psycopg2.Error as e:
         if e.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
             print(f"El artista con id {idArtista} no existe")
