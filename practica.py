@@ -177,38 +177,6 @@ def delete_usuario(conn):
         print(f"Error al eliminar usuario: {e.pgerror}")
         conn.rollback()
 
-#Update: Actualizar ranking de artista
-# def update_ranking_artista(conn):
-#     print("Actualizar ranking de un artista (valor independente):")
-#     sidArtista = input("ID artista: ")
-
-#     if not sidArtista.isdigit() or int(sidArtista) <= 0:
-#         print("El código debe ser un entero > 0")
-#         return
-#     idArtista = int(sidArtista)
-
-#     snovo_ranking = input("Nuevo valor de ranking: ")
-
-#     if not snovo_ranking.isdigit() or int(snovo_ranking) < 0:
-#         print ("El nuevo ranking tiene que se mayor que 0")
-#         return
-#     novo_ranking = int(snovo_ranking)
-
-#     sql = "UPDATE Artista SET ranking = %s WHERE idArtista = %s"
-#     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
-#     #Usamos este nivel de aislamiento porque solo necesitamos leer el estado confirmado
-#     #no hay riesgo de insconsistencia por multiples lecturas
-#     try:
-#         with conn.cursor() as cur:
-#             cur.execute(sql, (novo_ranking, idArtista))
-#             if cur.rowcount == 0:
-#                 print("No se encontro el artista.")
-#             else:
-#                 conn.commit()
-#                 print("Ranking actualizado correctamente.")
-#     except psycopg2.Error as e:
-#         print(f"Error al actualizar ranking: {e.pgerror}")
-#         conn.rollback()
 
 def increase_ranking_artista(conn):
     print("Actualizar ranking de un artista (valor independente):")
@@ -228,9 +196,9 @@ def increase_ranking_artista(conn):
         return
 
     sql = "UPDATE Artista SET ranking = ranking + (%s) WHERE idArtista = %s RETURNING nombre, ranking"
-    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
-    #Usamos este nivel de aislamiento porque solo necesitamos leer el estado confirmado
-    #no hay riesgo de insconsistencia por multiples lecturas
+    conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE
+    #Usamos este nivel de aislamiento para asegurarnos de que no se ha modificado 
+    #El valor del ranking en una trasaccion no confirmada
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (novo_ranking, idArtista))
@@ -243,6 +211,9 @@ def increase_ranking_artista(conn):
     except psycopg2.Error as e:
         if e.pgcode == psycopg2.errorcodes.CHECK_VIOLATION:
             print("El nuevo ranking tiene que se mayor que 0")
+        elif e.pgcode == psycopg2.errorcodes.SERIALIZATION_FAILURE:
+            print("El ranking ha sido modificado se cancela la modificacion")
+            print("Intentalo de nuevo en unos segundos")
         else:
             print(f"Error al actualizar ranking: {e.pgerror}")
         conn.rollback()
@@ -264,9 +235,8 @@ def cambiar_categoria(conn):
     """
 
     conn.isolation_level = psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
-    #Usamos este nivel de aislamiento porque solo necesitamos leer el estado confirmado
-    #no hay riesgo de insconsistencia por multiples lecturas
-
+    #Usamo este nivel porque no nos importa si se modifica categoria durante la 
+    #ejecucion de la transaccion, queremos que tenga el valor mas actual
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (categoria, idCancion))
@@ -278,25 +248,6 @@ def cambiar_categoria(conn):
         else:
             print(f"Erro {e.pgcode}: {e.pgerror}")
         conn.rollback()
-
-
-#Update: Aumentar manualmente seguidores de un artista en un 20%
-# def aumentar_seguidores_artista(conn):
-#     print("Aumentar seguidores de un artista en un 20%:")
-#     id_artista = input("ID artista: ")
-
-#     sql = "UPDATE Artista SET numeroSeguidores = numeroSeguidores * 1.2 WHERE idArtista = %s"
-#     try:
-#         with conn.cursor() as cur:
-#             cur.execute(sql, (id_artista,))
-#             if cur.rowcount == 0:
-#                 print("No se encontro el artista.")
-#             else:
-#                 conn.commit()
-#                 print("Seguidores aumentados correctamente.")
-#     except psycopg2.Error as e:
-#         print(f"Error al aumentar seguidores: {e.pgerror}")
-#         conn.rollback()
 
 
 #Funcionalidade 1: Crear unha canción e gardala ao mesmo tempo
@@ -793,14 +744,14 @@ def menu(conn):
 --- MENÚ ---
 1 - Crear usuario
 2 - Crear artista
-3 - Eliminar usuario
-4 - Aumentar ranking de artista (valor baseado)
-5 - Cambiar categoria (valor independiente)
-6 - Crear canción y guardarla
-7 - Crear artista y canción inicial
-8 - Ver artista por ID
-9 - Ver canciones guardadas por un usuario
-10 - Crear Cancion   
+3 - Crear cancion
+4 - Ver artista por id
+5 - Ver canciones usuario
+6 - Cambiar categoria
+7 - Aumentar/disminuir ranking artista
+8 - Crear multiples cancinoes para un artista
+9 - Crear un artista con su primera cancion
+10 - Eliminar usuario  
 11 - Guardar cancion     
 12 - Eliminar de guardados la cancion
 13 - Seguir a un artista
@@ -813,21 +764,21 @@ q - Saír
         elif opcion == "2":
             add_artista(conn)
         elif opcion == "3":
-            delete_usuario(conn)
-        elif opcion == "4":
-            increase_ranking_artista(conn)
-        elif opcion == "5":
-            cambiar_categoria(conn)
-        elif opcion == "6":
-            crear_y_guardar_cancion(conn)
-        elif opcion == "7":
-            crear_artista_con_cancion(conn)
-        elif opcion == "8":
-            ver_artista_por_id(conn)
-        elif opcion == "9":
-            ver_canciones_usuario(conn)
-        elif opcion == "10":
             create_cancion(conn)
+        elif opcion == "4":
+            ver_artista_por_id(conn)
+        elif opcion == "5":
+            ver_canciones_usuario(conn)
+        elif opcion == "6":
+            cambiar_categoria(conn)
+        elif opcion == "7":
+            increase_ranking_artista(conn)
+        elif opcion == "8":
+            create_multiple_songs(conn)
+        elif opcion == "9":
+            crear_artista_con_cancion(conn)
+        elif opcion == "10":
+            delete_usuario(conn)
         elif opcion == "11":
             save_cancion(conn)
         elif opcion =="12":
